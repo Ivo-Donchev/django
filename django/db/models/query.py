@@ -1002,15 +1002,14 @@ class QuerySet:
 
         class AnnotateObjectIterable(clone._iterable_class):
             def extract_data_for_annotated_objects(self, obj):
-                prefix = f'{field_name}__'
+                data_for_annotated_objects = {k: v for k, v in obj.__dict__.items() if k.startswith(field_name)}
+
                 result = defaultdict(dict)
 
-                for obj_field_name, obj_field_value in obj.__dict__.items():
-                    if obj_field_name.startswith(prefix):
+                for annotated_obj_field_name, annotated_obj_field_value in data_for_annotated_objects.items():
+                    subfield_name = annotated_obj_field_name[(len(field_name) + 2):]
 
-                        subfield_name = obj_field_name[len(prefix):]
-
-                        result[field_name][subfield_name] = obj_field_value
+                    result[field_name][subfield_name] = annotated_obj_field_value
 
                 return result
 
@@ -1038,10 +1037,10 @@ class QuerySet:
         object_queryset = queryset.filter(pk=related_object_id)
 
         def get_field_expression(related_object_field_name):
-            field_name_queryset = object_queryset.values_list(related_object_field_name)[:1]
-            output_field = queryset.model._meta._forward_fields_map[related_object_field_name]
-
-            return Subquery(queryset=field_name_queryset, output_field=output_field)
+            return Subquery(
+                queryset=object_queryset.values_list(related_object_field_name)[:1],
+                output_field=queryset.model._meta._forward_fields_map[related_object_field_name]
+            )
 
         fields_annotations = {
             f'{field_name}__{field}': get_field_expression(field)
