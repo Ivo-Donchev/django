@@ -5,7 +5,7 @@ The main QuerySet implementation. This provides the public API for the ORM.
 import copy
 import operator
 import warnings
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict, namedtuple, defaultdict
 from functools import lru_cache
 from itertools import chain
 
@@ -18,7 +18,7 @@ from django.db import (
 from django.db.models import DateField, DateTimeField, sql
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.deletion import Collector
-from django.db.models.expressions import F
+from django.db.models.expressions import F, Subquery
 from django.db.models.fields import AutoField
 from django.db.models.functions import Trunc
 from django.db.models.query_utils import FilteredRelation, InvalidQuery, Q
@@ -992,16 +992,9 @@ class QuerySet:
         related_object_id,
         fields=None,
     ):
-        from collections import defaultdict
-        from django.db.models import Subquery, Exists
-
         SELECT_RELATED_PREFIX = 'select_related'
 
-        if not fields:
-            fields = []
-
-        if 'id' not in fields:
-            fields = ['id', *fields]
+        fields = queryset.model._meta._forward_fields_map.keys()
 
         clone = self._clone()
 
