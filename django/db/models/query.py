@@ -992,20 +992,20 @@ class QuerySet:
         related_object_id,
         fields=None,
     ):
-        SELECT_RELATED_PREFIX = 'select_related'
-
         fields = queryset.model._meta._forward_fields_map.keys()
+        # TODO: Add validtion for field_name no in fields
 
         clone = self._clone()
 
         class AnnotateObjectIterable(clone._iterable_class):
             def extract_data_for_annotated_objects(self, obj):
-                prefix = f'{SELECT_RELATED_PREFIX}__'
+                prefix = f'{field_name}__'
                 result = defaultdict(dict)
 
                 for obj_field_name, obj_field_value in obj.__dict__.items():
                     if obj_field_name.startswith(prefix):
-                        field_name, subfield_name = obj_field_name[len(prefix):].split('__')
+
+                        subfield_name = obj_field_name[len(prefix):]
 
                         result[field_name][subfield_name] = obj_field_value
 
@@ -1034,19 +1034,19 @@ class QuerySet:
 
         object_queryset = queryset.filter(pk=related_object_id)
 
-        def get_field_expression(field_name):
-            field_name_queryset = object_queryset.values_list(field_name)[:1]
-            output_field = queryset.model._meta._forward_fields_map[field_name]
+        def get_field_expression(related_object_field_name):
+            field_name_queryset = object_queryset.values_list(related_object_field_name)[:1]
+            output_field = queryset.model._meta._forward_fields_map[related_object_field_name]
 
             return Subquery(queryset=field_name_queryset, output_field=output_field)
 
         fields_annotations = {
-            f'{SELECT_RELATED_PREFIX}__{field_name}__{field}': get_field_expression(field)
+            f'{field_name}__{field}': get_field_expression(field)
             for field in fields
         }
 
         for existing_annotation_key, existing_annotaion_value in queryset.query.annotations.items():
-            fields_annotations[f'{SELECT_RELATED_PREFIX}__{field_name}__{existing_annotation_key}'] =\
+            fields_annotations[f'{field_name}__{existing_annotation_key}'] =\
                 existing_annotaion_value
 
         return clone.annotate(**fields_annotations)
