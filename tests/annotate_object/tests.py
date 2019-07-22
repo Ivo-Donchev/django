@@ -3,7 +3,7 @@ import datetime
 from decimal import Decimal
 
 from django.test import TestCase
-
+from django.core.exceptions import FieldError
 from django.db.models import OuterRef, CharField, Value
 
 from .models import Author, Book, Publisher
@@ -81,4 +81,15 @@ class AnnotateObjectTestCase(TestCase):
             self.assertEqual(
                 getattr(book_with_annotated_author.annotated_author, key),
                 getattr(self.book_1.contact, key),
+            )
+
+    def test_raise_field_error_if_annotating_object_with_existing_field_name(self):
+        with self.assertRaisesMessage(
+            FieldError,
+            f'Invalid name for object annotation: "name". Field with this name already exists.'
+        ):
+            Book.objects.annotate_object(
+                field_name='name',
+                queryset=Author.objects.all(),
+                related_object_id=OuterRef('contact__id')
             )

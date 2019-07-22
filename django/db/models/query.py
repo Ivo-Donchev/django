@@ -990,10 +990,13 @@ class QuerySet:
         field_name,
         queryset,
         related_object_id,
-        fields=None,
     ):
         fields = queryset.model._meta._forward_fields_map.keys()
-        # TODO: Add validtion for field_name no in fields
+
+        if field_name in fields:
+            raise exceptions.FieldError(
+                f'Invalid name for object annotation: "{field_name}". Field with this name already exists.'
+            )
 
         clone = self._clone()
 
